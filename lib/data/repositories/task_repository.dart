@@ -5,14 +5,12 @@ class TaskRepository {
   final _tasks = FirebaseService.firestore.collection('tasks');
 
   Future<void> addTask(TaskModel task, String uid) async {
-    await _tasks.add({
-      ...task.toMap(),
-      'userId': uid,
-    });
+    await _tasks.add({...task.toMap(), 'userId': uid});
   }
 
   Stream<List<TaskModel>> getTasks(String uid) {
-    return _tasks
+    return FirebaseService.firestore
+        .collection('tasks')
         .where('userId', isEqualTo: uid)
         .orderBy('dueDate')
         .snapshots()
@@ -27,8 +25,8 @@ class TaskRepository {
     await _tasks.doc(id).delete();
   }
 
-  Future<void> deleteAllTasks() async {
-    final snapshot = await _tasks.get();
+  Future<void> deleteAllTasks(String uid) async {
+    final snapshot = await _tasks.where('userId', isEqualTo: uid).get();
     for (var doc in snapshot.docs) {
       await doc.reference.delete();
     }

@@ -1,26 +1,23 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../domain/entities/task_entity.dart';
+class TaskModel {
+  final String id;
+  final String title;
+  final String description;
+  final DateTime dueDate;
+  final bool isCompleted;
+  final String priority;
+  final String userId; 
 
-class TaskModel extends TaskEntity {
   TaskModel({
-    required super.id,
-    required super.title,
-    required super.description,
-    required super.dueDate,
-    required super.priority,
-    required super.isCompleted,
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.dueDate,
+    required this.isCompleted,
+    required this.priority,
+    required this.userId,
   });
-
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'title': title,
-      'description': description,
-      'dueDate': Timestamp.fromDate(dueDate),
-      'priority': priority,
-      'isCompleted': isCompleted,
-    };
-  }
 
   factory TaskModel.fromDoc(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
@@ -29,8 +26,20 @@ class TaskModel extends TaskEntity {
       title: data['title'] ?? '',
       description: data['description'] ?? '',
       dueDate: (data['dueDate'] as Timestamp).toDate(),
-      priority: data['priority'] ?? 'low',
       isCompleted: data['isCompleted'] ?? false,
+      priority: data['priority'] ?? 'low',
+      userId: data['userId'] ?? '',
     );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'title': title,
+      'description': description,
+      'dueDate': dueDate,
+      'isCompleted': isCompleted,
+      'priority': priority,
+      'userId': userId,
+    };
   }
 }

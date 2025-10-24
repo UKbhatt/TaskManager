@@ -1,15 +1,22 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rxdart/rxdart.dart';
 import 'package:flutter_riverpod/legacy.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../data/models/task_model.dart';
 import '../../data/repositories/task_repository.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
-final taskRepoProvider = Provider((ref) => TaskRepository());
+final taskRepoProvider = Provider<TaskRepository>((ref) => TaskRepository());
 
 final taskStreamProvider = StreamProvider<List<TaskModel>>((ref) {
-  final user = FirebaseAuth.instance.currentUser;
-  if (user == null) return const Stream.empty();
-  return ref.watch(taskRepoProvider).getTasks(user.uid);
+  final authChanges = FirebaseAuth.instance.authStateChanges();
+  final repo = ref.watch(taskRepoProvider);
+
+  return authChanges.switchMap((user) {
+    if (user == null) {
+      return const Stream<List<TaskModel>>.empty();
+    }
+    return repo.getTasks(user.uid);
+  });
 });
 
 final priorityFilterProvider = StateProvider<String>((ref) => 'all');

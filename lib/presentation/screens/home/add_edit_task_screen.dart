@@ -13,6 +13,7 @@ class AddEditTaskScreen extends StatefulWidget {
 }
 
 class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
+  final _formKey = GlobalKey<FormState>();
   final _titleCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
   DateTime _dueDate = DateTime.now();
@@ -31,10 +32,19 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
   }
 
   Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return; // ✅ Validation added
+
     setState(() => _loading = true);
     final repo = TaskRepository();
     final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
+
+    if (uid == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('User not logged in')),
+      );
+      setState(() => _loading = false);
+      return;
+    }
 
     final task = TaskModel(
       id: widget.isEdit ? widget.task!.id : '',
@@ -43,6 +53,7 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
       dueDate: _dueDate,
       priority: _priority,
       isCompleted: widget.task?.isCompleted ?? false,
+      userId: uid,
     );
 
     try {
@@ -53,10 +64,11 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
       }
       if (mounted) Navigator.pop(context);
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}')),
+      );
     } finally {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -106,127 +118,139 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
                 ),
               ],
             ),
-            child: Column(
-              children: [
-                TextField(
-                  controller: _titleCtrl,
-                  decoration: InputDecoration(
-                    labelText: 'Title',
-                    prefixIcon: const Icon(Icons.title, color: Colors.indigo),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+            child: Form(
+              key: _formKey, // ✅ Form validation wrapper
+              child: Column(
+                children: [
+                  TextFormField(
+                    controller: _titleCtrl,
+                    validator: (v) =>
+                        v == null || v.trim().isEmpty ? 'Enter title' : null,
+                    decoration: InputDecoration(
+                      labelText: 'Title',
+                      prefixIcon:
+                          const Icon(Icons.title, color: Colors.indigo),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 18),
+                  const SizedBox(height: 16),
 
-                TextField(
-                  controller: _descCtrl,
-                  maxLines: 3,
-                  decoration: InputDecoration(
-                    labelText: 'Description',
-                    alignLabelWithHint: true,
-                    prefixIcon:
-                        const Icon(Icons.description_outlined, color: Colors.indigo),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 18),
-
-                Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.indigo.shade100),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: ListTile(
-                    leading:
-                        const Icon(Icons.calendar_today, color: Colors.indigo),
-                    title: const Text(
-                      'Due Date',
-                      style: TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    subtitle: Text(
-                      _dueDate.toLocal().toString().split(' ')[0],
-                      style: const TextStyle(color: Colors.black54),
-                    ),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.edit_calendar_rounded,
+                  TextFormField(
+                    controller: _descCtrl,
+                    maxLines: 3,
+                    validator: (v) => v == null || v.trim().isEmpty
+                        ? 'Enter description'
+                        : null,
+                    decoration: InputDecoration(
+                      labelText: 'Description',
+                      alignLabelWithHint: true,
+                      prefixIcon: const Icon(Icons.description_outlined,
                           color: Colors.indigo),
-                      onPressed: () async {
-                        final date = await showDatePicker(
-                          context: context,
-                          initialDate: _dueDate,
-                          firstDate: DateTime.now(),
-                          lastDate: DateTime(2100),
-                        );
-                        if (date != null) setState(() => _dueDate = date);
-                      },
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 18),
+                  const SizedBox(height: 16),
 
-                DropdownButtonFormField<String>(
-                  value: _priority,
-                  onChanged: (v) => setState(() => _priority = v ?? 'low'),
-                  decoration: InputDecoration(
-                    labelText: 'Priority',
-                    prefixIcon:
-                        const Icon(Icons.flag_rounded, color: Colors.indigo),
-                    border: OutlineInputBorder(
+                  Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.indigo.shade100),
                       borderRadius: BorderRadius.circular(12),
                     ),
+                    child: ListTile(
+                      leading: const Icon(Icons.calendar_today,
+                          color: Colors.indigo),
+                      title: const Text(
+                        'Due Date',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      subtitle: Text(
+                        _dueDate.toLocal().toString().split(' ')[0],
+                        style: const TextStyle(color: Colors.black54),
+                      ),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.edit_calendar_rounded,
+                            color: Colors.indigo),
+                        onPressed: () async {
+                          final date = await showDatePicker(
+                            context: context,
+                            initialDate: _dueDate,
+                            firstDate: DateTime.now(),
+                            lastDate: DateTime(2100),
+                          );
+                          if (date != null) setState(() => _dueDate = date);
+                        },
+                      ),
+                    ),
                   ),
-                  items: const [
-                    DropdownMenuItem(
-                        value: 'low',
-                        child: Text('Low', style: TextStyle(color: Colors.green))),
-                    DropdownMenuItem(
-                        value: 'medium',
-                        child: Text('Medium', style: TextStyle(color: Colors.orange))),
-                    DropdownMenuItem(
-                        value: 'high',
-                        child: Text('High', style: TextStyle(color: Colors.red))),
-                  ],
-                ),
-                const SizedBox(height: 30),
+                  const SizedBox(height: 16),
 
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton.icon(
-                    onPressed: _loading ? null : _save,
-                    icon: _loading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child:
-                                CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                          )
-                        : const Icon(Icons.save_rounded, color: Colors.white),
-                    label: Text(
-                      _loading
-                          ? 'Saving...'
-                          : widget.isEdit
-                              ? 'Update Task'
-                              : 'Add Task',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                  DropdownButtonFormField<String>(
+                    value: _priority,
+                    onChanged: (v) => setState(() => _priority = v ?? 'low'),
+                    decoration: InputDecoration(
+                      labelText: 'Priority',
+                      prefixIcon: const Icon(Icons.flag_rounded,
+                          color: Colors.indigo),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.indigo,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                    items: const [
+                      DropdownMenuItem(
+                          value: 'low',
+                          child:
+                              Text('Low', style: TextStyle(color: Colors.green))),
+                      DropdownMenuItem(
+                          value: 'medium',
+                          child: Text('Medium',
+                              style: TextStyle(color: Colors.orange))),
+                      DropdownMenuItem(
+                          value: 'high',
+                          child:
+                              Text('High', style: TextStyle(color: Colors.red))),
+                    ],
+                  ),
+                  const SizedBox(height: 28),
+
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton.icon(
+                      onPressed: _loading ? null : _save,
+                      icon: _loading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                  color: Colors.white, strokeWidth: 2),
+                            )
+                          : const Icon(Icons.save_rounded, color: Colors.white),
+                      label: Text(
+                        _loading
+                            ? 'Saving...'
+                            : widget.isEdit
+                                ? 'Update Task'
+                                : 'Add Task',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.indigo,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

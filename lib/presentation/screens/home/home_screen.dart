@@ -7,6 +7,7 @@ import '../../providers/task_provider.dart';
 import '../../../data/models/task_model.dart';
 import '../../../data/repositories/task_repository.dart';
 import 'add_edit_task_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'task_tile.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -321,6 +322,7 @@ class _BottomNavBar extends StatelessWidget {
                   ),
                   onTap: () async {
                     Navigator.pop(context);
+
                     final confirm = await showDialog(
                       context: context,
                       builder: (_) => AlertDialog(
@@ -348,10 +350,23 @@ class _BottomNavBar extends StatelessWidget {
                     );
 
                     if (confirm == true) {
-                      await TaskRepository().deleteAllTasks();
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('All tasks deleted')),
-                      );
+                      final user = FirebaseAuth
+                          .instance
+                          .currentUser; 
+                      if (user != null) {
+                        await TaskRepository().deleteAllTasks(
+                          user.uid,
+                        );
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('All your tasks were deleted'),
+                          ),
+                        );
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('User not logged in')),
+                        );
+                      }
                     }
                   },
                 ),
@@ -381,167 +396,168 @@ class _BottomNavBar extends StatelessWidget {
     );
   }
 
-void _showTaskCalendar(BuildContext context, WidgetRef ref) {
-  final tasksAsync = ref.watch(taskStreamProvider);
+  void _showTaskCalendar(BuildContext context, WidgetRef ref) {
+    final tasksAsync = ref.watch(taskStreamProvider);
 
-  showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.white,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-    ),
-    builder: (_) {
-      return Padding(
-        padding: const EdgeInsets.all(16),
-        child: tasksAsync.when(
-          data: (tasks) {
-           
-            Map<DateTime, List<TaskModel>> taskMap = {};
-            for (var task in tasks) {
-              final date = DateTime(
-                task.dueDate.year,
-                task.dueDate.month,
-                task.dueDate.day,
-              );
-              taskMap[date] = taskMap[date] ?? [];
-              taskMap[date]!.add(task);
-            }
-
-            DateTime focusedDay = DateTime.now();
-            DateTime? selectedDay;
-
-            return StatefulBuilder(
-              builder: (context, setState) {
-                List<TaskModel> selectedTasks = [];
-                if (selectedDay != null) {
-                  final keyDate = DateTime(
-                    selectedDay!.year,
-                    selectedDay!.month,
-                    selectedDay!.day,
-                  );
-                  selectedTasks = taskMap[keyDate] ?? [];
-                }
-
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      "📅 Task Calendar",
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF6A5AE0),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-
-                    TableCalendar(
-                      focusedDay: focusedDay,
-                      firstDay: DateTime.utc(2020, 1, 1),
-                      lastDay: DateTime.utc(2100, 1, 1),
-                      calendarFormat: CalendarFormat.month,
-                      selectedDayPredicate: (day) =>
-                          selectedDay != null && _isSameDay(day, selectedDay!),
-                      headerStyle: const HeaderStyle(
-                        titleCentered: true,
-                        formatButtonVisible: false,
-                      ),
-                      calendarStyle: const CalendarStyle(
-                        todayDecoration: BoxDecoration(
-                          color: Color(0xFF6A5AE0),
-                          shape: BoxShape.circle,
-                        ),
-                        selectedDecoration: BoxDecoration(
-                          color: Colors.deepPurpleAccent,
-                          shape: BoxShape.circle,
-                        ),
-                        markerDecoration: BoxDecoration(
-                          color: Colors.redAccent,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      eventLoader: (day) {
-                        final date =
-                            DateTime(day.year, day.month, day.day);
-                        return taskMap[date] ?? [];
-                      },
-                      onDaySelected: (selected, focused) {
-                        setState(() {
-                          selectedDay = selected;
-                          focusedDay = focused;
-                        });
-                      },
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    if (selectedDay != null)
-                      selectedTasks.isNotEmpty
-                          ? Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  "Tasks on ${DateFormat('d MMM, yyyy').format(selectedDay!)}",
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF6A5AE0),
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-                                ...selectedTasks.map(
-                                  (t) => Card(
-                                    color: Colors.grey.shade100,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: ListTile(
-                                      title: Text(
-                                        t.title,
-                                        style: const TextStyle(
-                                            fontWeight: FontWeight.bold),
-                                      ),
-                                      subtitle: Text(
-                                        t.description,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            )
-                          : Padding(
-                              padding: const EdgeInsets.all(12.0),
-                              child: Text(
-                                "No tasks on ${DateFormat('d MMM').format(selectedDay!)} 🎉",
-                                style: const TextStyle(
-                                    color: Colors.black54, fontSize: 14),
-                              ),
-                            ),
-                  ],
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) {
+        return Padding(
+          padding: const EdgeInsets.all(16),
+          child: tasksAsync.when(
+            data: (tasks) {
+              Map<DateTime, List<TaskModel>> taskMap = {};
+              for (var task in tasks) {
+                final date = DateTime(
+                  task.dueDate.year,
+                  task.dueDate.month,
+                  task.dueDate.day,
                 );
-              },
-            );
-          },
-          loading: () => const SizedBox(
-            height: 150,
-            child: Center(child: CircularProgressIndicator()),
-          ),
-          error: (e, _) => Center(
-            child: Text(
-              e.toString(),
-              style: const TextStyle(color: Colors.red),
+                taskMap[date] = taskMap[date] ?? [];
+                taskMap[date]!.add(task);
+              }
+
+              DateTime focusedDay = DateTime.now();
+              DateTime? selectedDay;
+
+              return StatefulBuilder(
+                builder: (context, setState) {
+                  List<TaskModel> selectedTasks = [];
+                  if (selectedDay != null) {
+                    final keyDate = DateTime(
+                      selectedDay!.year,
+                      selectedDay!.month,
+                      selectedDay!.day,
+                    );
+                    selectedTasks = taskMap[keyDate] ?? [];
+                  }
+
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        "📅 Task Calendar",
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF6A5AE0),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+
+                      TableCalendar(
+                        focusedDay: focusedDay,
+                        firstDay: DateTime.utc(2020, 1, 1),
+                        lastDay: DateTime.utc(2100, 1, 1),
+                        calendarFormat: CalendarFormat.month,
+                        selectedDayPredicate: (day) =>
+                            selectedDay != null &&
+                            _isSameDay(day, selectedDay!),
+                        headerStyle: const HeaderStyle(
+                          titleCentered: true,
+                          formatButtonVisible: false,
+                        ),
+                        calendarStyle: const CalendarStyle(
+                          todayDecoration: BoxDecoration(
+                            color: Color(0xFF6A5AE0),
+                            shape: BoxShape.circle,
+                          ),
+                          selectedDecoration: BoxDecoration(
+                            color: Colors.deepPurpleAccent,
+                            shape: BoxShape.circle,
+                          ),
+                          markerDecoration: BoxDecoration(
+                            color: Colors.redAccent,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        eventLoader: (day) {
+                          final date = DateTime(day.year, day.month, day.day);
+                          return taskMap[date] ?? [];
+                        },
+                        onDaySelected: (selected, focused) {
+                          setState(() {
+                            selectedDay = selected;
+                            focusedDay = focused;
+                          });
+                        },
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      if (selectedDay != null)
+                        selectedTasks.isNotEmpty
+                            ? Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "Tasks on ${DateFormat('d MMM, yyyy').format(selectedDay!)}",
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF6A5AE0),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  ...selectedTasks.map(
+                                    (t) => Card(
+                                      color: Colors.grey.shade100,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: ListTile(
+                                        title: Text(
+                                          t.title,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        subtitle: Text(
+                                          t.description,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : Padding(
+                                padding: const EdgeInsets.all(12.0),
+                                child: Text(
+                                  "No tasks on ${DateFormat('d MMM').format(selectedDay!)} 🎉",
+                                  style: const TextStyle(
+                                    color: Colors.black54,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                    ],
+                  );
+                },
+              );
+            },
+            loading: () => const SizedBox(
+              height: 150,
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            error: (e, _) => Center(
+              child: Text(
+                e.toString(),
+                style: const TextStyle(color: Colors.red),
+              ),
             ),
           ),
-        ),
-      );
-    },
-  );
-}
+        );
+      },
+    );
+  }
 
-bool _isSameDay(DateTime d1, DateTime d2) =>
-    d1.year == d2.year && d1.month == d2.month && d1.day == d2.day;
-
+  bool _isSameDay(DateTime d1, DateTime d2) =>
+      d1.year == d2.year && d1.month == d2.month && d1.day == d2.day;
 }

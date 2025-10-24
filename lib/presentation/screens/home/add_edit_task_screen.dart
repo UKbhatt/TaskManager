@@ -38,8 +38,8 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
 
     final task = TaskModel(
       id: widget.isEdit ? widget.task!.id : '',
-      title: _titleCtrl.text,
-      description: _descCtrl.text,
+      title: _titleCtrl.text.trim(),
+      description: _descCtrl.text.trim(),
       dueDate: _dueDate,
       priority: _priority,
       isCompleted: widget.task?.isCompleted ?? false,
@@ -62,65 +62,173 @@ class _AddEditTaskScreenState extends State<AddEditTaskScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+
     return Scaffold(
-      appBar:
-          AppBar(title: Text(widget.isEdit ? 'Edit Task' : 'Add Task')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            TextField(
-              controller: _titleCtrl,
-              decoration: const InputDecoration(labelText: 'Title'),
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        title: Text(
+          widget.isEdit ? 'Edit Task' : 'Add Task',
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
+      ),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF8F8CEB), Color(0xFF6A5AE0)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: SingleChildScrollView(
+          padding: EdgeInsets.symmetric(
+            horizontal: size.width * 0.08,
+            vertical: size.height * 0.12,
+          ),
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: size.width * 0.05,
+              vertical: size.height * 0.04,
             ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _descCtrl,
-              decoration: const InputDecoration(labelText: 'Description'),
-            ),
-            const SizedBox(height: 10),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Due Date'),
-              subtitle:
-                  Text(_dueDate.toLocal().toString().split(' ')[0]),
-              trailing: IconButton(
-                icon: const Icon(Icons.calendar_today),
-                onPressed: () async {
-                  final date = await showDatePicker(
-                    context: context,
-                    initialDate: _dueDate,
-                    firstDate: DateTime.now(),
-                    lastDate: DateTime(2100),
-                  );
-                  if (date != null) setState(() => _dueDate = date);
-                },
-              ),
-            ),
-            const SizedBox(height: 10),
-            DropdownButtonFormField<String>(
-              value: _priority,
-              onChanged: (v) => _priority = v ?? 'low',
-              decoration: const InputDecoration(labelText: 'Priority'),
-              items: const [
-                DropdownMenuItem(value: 'low', child: Text('Low')),
-                DropdownMenuItem(value: 'medium', child: Text('Medium')),
-                DropdownMenuItem(value: 'high', child: Text('High')),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black26.withOpacity(0.1),
+                  blurRadius: 10,
+                  offset: const Offset(0, 5),
+                ),
               ],
             ),
-            const SizedBox(height: 30),
-            ElevatedButton(
-              onPressed: _save,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.indigo,
-                minimumSize: const Size.fromHeight(50),
-              ),
-              child: _loading
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : Text(widget.isEdit ? 'Update' : 'Add',
-                      style: const TextStyle(color: Colors.white)),
+            child: Column(
+              children: [
+                TextField(
+                  controller: _titleCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'Title',
+                    prefixIcon: const Icon(Icons.title, color: Colors.indigo),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+
+                TextField(
+                  controller: _descCtrl,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    labelText: 'Description',
+                    alignLabelWithHint: true,
+                    prefixIcon:
+                        const Icon(Icons.description_outlined, color: Colors.indigo),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+
+                Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.indigo.shade100),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: ListTile(
+                    leading:
+                        const Icon(Icons.calendar_today, color: Colors.indigo),
+                    title: const Text(
+                      'Due Date',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: Text(
+                      _dueDate.toLocal().toString().split(' ')[0],
+                      style: const TextStyle(color: Colors.black54),
+                    ),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.edit_calendar_rounded,
+                          color: Colors.indigo),
+                      onPressed: () async {
+                        final date = await showDatePicker(
+                          context: context,
+                          initialDate: _dueDate,
+                          firstDate: DateTime.now(),
+                          lastDate: DateTime(2100),
+                        );
+                        if (date != null) setState(() => _dueDate = date);
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+
+                DropdownButtonFormField<String>(
+                  value: _priority,
+                  onChanged: (v) => setState(() => _priority = v ?? 'low'),
+                  decoration: InputDecoration(
+                    labelText: 'Priority',
+                    prefixIcon:
+                        const Icon(Icons.flag_rounded, color: Colors.indigo),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  items: const [
+                    DropdownMenuItem(
+                        value: 'low',
+                        child: Text('Low', style: TextStyle(color: Colors.green))),
+                    DropdownMenuItem(
+                        value: 'medium',
+                        child: Text('Medium', style: TextStyle(color: Colors.orange))),
+                    DropdownMenuItem(
+                        value: 'high',
+                        child: Text('High', style: TextStyle(color: Colors.red))),
+                  ],
+                ),
+                const SizedBox(height: 30),
+
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton.icon(
+                    onPressed: _loading ? null : _save,
+                    icon: _loading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child:
+                                CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                          )
+                        : const Icon(Icons.save_rounded, color: Colors.white),
+                    label: Text(
+                      _loading
+                          ? 'Saving...'
+                          : widget.isEdit
+                              ? 'Update Task'
+                              : 'Add Task',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.indigo,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

@@ -26,4 +26,11 @@ class TaskRepository {
   Future<void> deleteTask(String id) async {
     await _tasks.doc(id).delete();
   }
+
+  Future<void> deleteAllTasks() async {
+    final snapshot = await _tasks.get();
+    for (var doc in snapshot.docs) {
+      await doc.reference.delete();
+    }
+  }
 }

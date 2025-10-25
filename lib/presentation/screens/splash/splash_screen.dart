@@ -109,7 +109,7 @@ class _SplashScreenState extends State<SplashScreen>
                 SizedBox(height: verticalSpacing * 2),
 
                 Text(
-                  "Gig Task Manager",
+                  "Task Manager",
                   style: TextStyle(
                     fontSize: size.width * 0.07,
                     fontWeight: FontWeight.bold,
